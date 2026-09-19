@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WINTER NOTE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="toast"></div>
+
+  <section id="setupScreen" class="setup-screen hidden">
+    <div class="setup-card">
+      <div class="brand-mark">W</div>
+      <h1>WINTER NOTE</h1>
+      <p>처음 한 번만 Supabase 연결 정보를 입력해 주세요.</p>
+      <label>Project URL<input id="setupUrl" placeholder="https://xxxx.supabase.co"></label>
+      <label>Publishable / anon key<input id="setupKey" type="password" placeholder="sb_publishable_... 또는 anon key"></label>
+      <button id="saveSetup" class="primary wide">연결 정보 저장</button>
+      <small>정보는 이 브라우저에만 저장됩니다.</small>
+    </div>
+  </section>
+
+  <section id="loginScreen" class="login-screen hidden">
+    <div class="login-card">
+      <div class="brand-mark">W</div>
+      <h1>WINTER NOTE</h1>
+      <p>나만의 업무 메모장</p>
+      <label>이메일<input id="loginEmail" type="email" autocomplete="email"></label>
+      <label>비밀번호<input id="loginPassword" type="password" autocomplete="current-password"></label>
+      <button id="loginBtn" class="primary wide">로그인</button>
+      <button id="backSetup" class="text-btn">Supabase 연결 정보 다시 입력</button>
+      <div id="loginError" class="error"></div>
+    </div>
+  </section>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="logo-wrap">
+        <div class="brand-mark small">W</div>
+        <div><strong>WINTER NOTE</strong><span>my work archive</span></div>
+      </div>
+      <nav id="nav">
+        <button class="nav-item active" data-page="home"><span>⌂</span> 홈</button>
+        <button class="nav-item" data-page="hyeyoung"><span>👗</span> 혜영이는 못말려</button>
+        <button class="nav-item" data-page="woojae"><span>🦴</span> 오늘의 주우재</button>
+        <button class="nav-item" data-page="dowoon"><span>🐶</span> 윤도운도윤</button>
+      </nav>
+      <div class="side-bottom">
+        <div id="userEmail" class="user-email"></div>
+        <button id="logoutBtn" class="logout">로그아웃</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div id="eyebrow" class="eyebrow">PERSONAL DASHBOARD</div>
+          <h1 id="pageTitle">홈</h1>
+        </div>
+        <div id="todayText" class="today"></div>
+      </header>
+
+      <section id="homePage" class="page">
+        <div class="home-grid">
+          <div class="card week-card">
+            <div class="card-head">
+              <div><span class="kicker">THIS WEEK</span><h2>이번 주 일정</h2></div>
+              <div class="week-actions">
+                <button id="prevWeek" class="icon-btn">‹</button>
+                <button id="thisWeek" class="soft-btn">이번 주</button>
+                <button id="nextWeek" class="icon-btn">›</button>
+                <button id="addSchedule" class="primary">+ 일정 추가</button>
+              </div>
+            </div>
+            <div id="weekRange" class="week-range"></div>
+            <div id="weekGrid" class="week-grid"></div>
+          </div>
+
+          <div class="card todo-card">
+            <div class="card-head">
+              <div><span class="kicker">TODAY</span><h2>오늘 할 일</h2></div>
+            </div>
+            <div class="quick-add">
+              <input id="todoInput" placeholder="할 일을 입력하고 Enter" />
+              <button id="todoAdd" class="soft-btn">추가</button>
+            </div>
+            <div id="todoList" class="todo-list"></div>
+          </div>
+        </div>
+
+        <div class="card recent-card">
+          <div class="card-head">
+            <div><span class="kicker">RECENT</span><h2>최근 메모</h2></div>
+          </div>
+          <div id="recentNotes" class="recent-grid"></div>
+        </div>
+      </section>
+
+      <section id="notesPage" class="page hidden">
+        <div class="notes-shell">
+          <aside class="note-list-panel">
+            <div class="note-list-top">
+              <button id="newNote" class="primary wide">+ 새 메모</button>
+              <input id="noteSearch" class="search" placeholder="메모 검색" />
+            </div>
+            <div id="noteList" class="note-list"></div>
+          </aside>
+
+          <article class="editor-panel">
+            <div id="emptyEditor" class="empty-editor">
+              <div class="empty-icon">✎</div>
+              <h2>메모를 선택하거나 새로 작성해 주세요</h2>
+            </div>
+            <div id="editorWrap" class="hidden">
+              <div class="editor-meta">
+                <input id="noteTitle" class="title-input" placeholder="제목 없음" />
+                <div class="editor-actions">
+                  <button id="pinNote" class="soft-btn">📌 고정</button>
+                  <button id="deleteNote" class="danger-btn">삭제</button>
+                </div>
+              </div>
+              <div class="toolbar">
+                <select id="fontSize">
+                  <option value="2">작게</option>
+                  <option value="3" selected>보통</option>
+                  <option value="4">크게</option>
+                  <option value="5">아주 크게</option>
+                </select>
+                <button data-cmd="bold"><b>B</b></button>
+                <button data-cmd="underline"><u>U</u></button>
+                <label class="color-tool">글자 <input id="foreColor" type="color" value="#25282d"></label>
+                <label class="color-tool">형광 <input id="hiliteColor" type="color" value="#fff0a8"></label>
+                <button data-cmd="insertUnorderedList">• 목록</button>
+                <button id="checkBtn">☑ 체크</button>
+                <button id="linkBtn">🔗 링크</button>
+              </div>
+              <div id="noteContent" class="editor" contenteditable="true" data-placeholder="메모를 입력하세요..."></div>
+              <div class="save-row"><span id="saveState">자동 저장</span><span id="updatedText"></span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="scheduleDialog">
+    <form method="dialog" id="scheduleForm">
+      <div class="modal-head"><h2 id="scheduleModalTitle">일정 추가</h2><button value="cancel" class="xbtn">×</button></div>
+      <input type="hidden" id="scheduleId">
+      <label>일정<input id="scheduleTitle" required placeholder="촬영, 미팅, 업로드 등"></label>
+      <div class="two">
+        <label>날짜<input id="scheduleDate" type="date" required></label>
+        <label>채널<select id="scheduleChannel">
+          <option value="혜영이는 못말려">👗 혜영이는 못말려</option>
+          <option value="오늘의 주우재">🦴 오늘의 주우재</option>
+          <option value="윤도운도윤">🐶 윤도운도윤</option>
+          <option value="기타">기타</option>
+        </select></label>
+      </div>
+      <div class="two">
+        <label>시작 시간<input id="scheduleStart" type="time"></label>
+        <label>종료 시간<input id="scheduleEnd" type="time"></label>
+      </div>
+      <label>메모<textarea id="scheduleMemo" rows="3"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" id="deleteSchedule" class="danger-btn hidden">삭제</button>
+        <span></span>
+        <button value="cancel" class="soft-btn">취소</button>
+        <button type="button" id="saveSchedule" class="primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
