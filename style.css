@@ -86,3 +86,16 @@ body{font-size:12px}
   .note-dialog .editor-actions{flex-wrap:wrap;justify-content:flex-end}
   .note-dialog .toolbar{padding:7px 12px}.note-dialog .editor{font-size:11px;padding:16px 14px;min-height:330px}
 }
+
+/* v7 — inline note reader */
+.inline-note-view{margin-top:12px;padding:0;overflow:hidden}
+.inline-note-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:18px 20px;border-bottom:1px solid var(--line)}
+.inline-note-head h2{font-size:15px;margin:3px 0 4px}
+.inline-note-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.inline-note-content{padding:22px 20px;min-height:140px;font-size:12px;line-height:1.75;word-break:break-word}
+.board-list .note-row.active{background:#eef7fb}
+@media(max-width:720px){
+  .inline-note-head{padding:14px;flex-direction:column}
+  .inline-note-actions{width:100%;justify-content:flex-start}
+  .inline-note-content{padding:17px 14px;font-size:11px}
+}

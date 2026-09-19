@@ -109,6 +109,23 @@
           </div>
           <div id="noteList" class="note-list board-list"></div>
         </div>
+
+        <div id="inlineNoteView" class="inline-note-view card hidden">
+          <div class="inline-note-head">
+            <div>
+              <span id="inlinePinned" class="view-pin"></span>
+              <h2 id="inlineTitle"></h2>
+              <div id="inlineMeta" class="view-meta"></div>
+            </div>
+            <div class="inline-note-actions">
+              <button id="inlinePinNote" class="soft-btn">📌 고정</button>
+              <button id="inlineEditNote" class="primary">수정</button>
+              <button id="inlineDeleteNote" class="danger-btn">삭제</button>
+              <button id="inlineCloseNote" class="soft-btn">접기</button>
+            </div>
+          </div>
+          <div id="inlineContent" class="inline-note-content"></div>
+        </div>
       </section>
 
       <section id="ideasPage" class="page hidden">
