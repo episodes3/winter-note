@@ -176,8 +176,85 @@ $("#noteContent").addEventListener("keydown", e=>{
 });
 
 $("#linkBtn").onclick=()=>{insertLinkCard()};
-$("#checkBtn").onclick=()=>{document.execCommand("insertHTML",false,'<div class="check-line" data-checked="false"><span class="check-box" contenteditable="false"></span><span class="check-text">체크 항목</span></div><div><br></div>');$("#noteContent").focus();scheduleSave()};
-$("#noteContent").addEventListener("click",e=>{let box=e.target.closest(".check-box");if(!box)return;let line=box.closest(".check-line");let checked=!line.classList.contains("checked");line.classList.toggle("checked",checked);line.dataset.checked=String(checked);box.textContent=checked?"✓":"";scheduleSave()});
+
+// Checklist: turn the current line / selected lines into real clickable checklist items.
+$("#checkBtn").onclick=()=>convertSelectionToChecklist();
+
+function checklistHTML(text=""){
+  const safe=(text||"").replace(/<br\s*\/?>/gi,"").trim();
+  return `<div class="check-line" data-checked="false"><span class="check-box" contenteditable="false"></span><span class="check-text">${safe||"<br>"}</span></div>`;
+}
+function currentEditorBlock(node){
+  if(!node)return null;
+  if(node.nodeType===3)node=node.parentElement;
+  while(node&&node!==$("#noteContent")){
+    if(node.parentElement===$("#noteContent")||node.classList?.contains("check-line"))return node;
+    node=node.parentElement;
+  }
+  return null;
+}
+function placeCaretInCheck(line){
+  const text=line?.querySelector(".check-text");if(!text)return;
+  const range=document.createRange(),sel=window.getSelection();
+  range.selectNodeContents(text);range.collapse(false);sel.removeAllRanges();sel.addRange(range);text.focus?.();
+}
+function convertSelectionToChecklist(){
+  const editor=$("#noteContent");editor.focus();
+  const sel=window.getSelection();if(!sel||!sel.rangeCount)return;
+  const range=sel.getRangeAt(0);
+  if(!editor.contains(range.commonAncestorContainer))return;
+
+  if(range.collapsed){
+    let block=currentEditorBlock(range.startContainer);
+    if(block?.classList?.contains("check-line"))return placeCaretInCheck(block);
+    if(!block){
+      document.execCommand("insertHTML",false,checklistHTML(""));
+      const lines=editor.querySelectorAll(".check-line");placeCaretInCheck(lines[lines.length-1]);scheduleSave();return;
+    }
+    const line=document.createElement("div");line.className="check-line";line.dataset.checked="false";
+    const box=document.createElement("span");box.className="check-box";box.contentEditable="false";
+    const text=document.createElement("span");text.className="check-text";
+    while(block.firstChild)text.appendChild(block.firstChild);
+    if(!text.innerHTML.trim())text.innerHTML="<br>";
+    line.append(box,text);block.replaceWith(line);placeCaretInCheck(line);scheduleSave();return;
+  }
+
+  const frag=range.cloneContents(),holder=document.createElement("div");holder.appendChild(frag);
+  let parts=[...holder.children].map(el=>el.innerHTML).filter(x=>x.replace(/<br\s*\/?>/gi,"").trim());
+  if(!parts.length)parts=holder.innerText.split(/\n+/).map(x=>x.trim()).filter(Boolean).map(escapeHTML);
+  if(!parts.length)parts=[escapeHTML(sel.toString())];
+  document.execCommand("insertHTML",false,parts.map(checklistHTML).join(""));
+  scheduleSave();
+}
+function escapeHTML(s){const d=document.createElement("div");d.textContent=s||"";return d.innerHTML}
+
+$("#noteContent").addEventListener("click",e=>{
+  let box=e.target.closest(".check-box");if(!box)return;
+  e.preventDefault();
+  let line=box.closest(".check-line"),checked=!line.classList.contains("checked");
+  line.classList.toggle("checked",checked);line.dataset.checked=String(checked);box.textContent=checked?"✓":"";
+  scheduleSave();
+});
+
+// Enter on a checklist item creates the next checklist item.
+// Enter on an empty checklist item exits checklist mode.
+$("#noteContent").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||e.shiftKey)return;
+  const sel=window.getSelection();if(!sel?.rangeCount)return;
+  const line=currentEditorBlock(sel.anchorNode);
+  if(!line?.classList?.contains("check-line"))return;
+  e.preventDefault();
+  const text=line.querySelector(".check-text");
+  if(!(text?.innerText||"").trim()){
+    const normal=document.createElement("div");normal.innerHTML="<br>";line.replaceWith(normal);
+    const r=document.createRange();r.selectNodeContents(normal);r.collapse(true);sel.removeAllRanges();sel.addRange(r);
+  }else{
+    const next=document.createElement("div");next.className="check-line";next.dataset.checked="false";
+    next.innerHTML='<span class="check-box" contenteditable="false"></span><span class="check-text"><br></span>';
+    line.after(next);placeCaretInCheck(next);
+  }
+  scheduleSave();
+});
 function insertLinkCard(){
   let raw=prompt("링크 주소를 입력해 주세요.");if(!raw)return;let u;try{u=new URL(raw.match(/^https?:\/\//)?raw:"https://"+raw)}catch{return toast("올바른 링크 주소를 입력해 주세요.")}
   if(!["http:","https:"].includes(u.protocol))return toast("http/https 링크만 사용할 수 있어요.");
