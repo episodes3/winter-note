@@ -99,3 +99,11 @@ body{font-size:12px}
   .inline-note-actions{width:100%;justify-content:flex-start}
   .inline-note-content{padding:17px 14px;font-size:11px}
 }
+
+/* v8 — explicit finish button for note editor */
+.editor-confirm-row{display:flex;justify-content:flex-end;padding:10px 20px 16px;border-top:1px solid var(--line);background:#fff}
+.confirm-note-btn{min-width:92px}
+@media(max-width:720px){
+  .editor-confirm-row{padding:10px 12px 14px}
+  .confirm-note-btn{width:100%;padding:10px 12px}
+}

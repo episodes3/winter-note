@@ -351,7 +351,7 @@ $("#inlinePinNote").onclick=async()=>{
 
 $("#closeNoteView").onclick=()=>$("#noteDialog").close();
 $("#editNote").onclick=()=>openNoteEditor(false);
-$("#closeNoteEdit").onclick=async()=>{
+async function finishNoteEdit(){
   clearTimeout(saveTimer);
   if(currentNote?._new){
     const hasText=$("#noteTitle").value.trim()||strip($("#noteContent").innerHTML).trim();
@@ -359,9 +359,11 @@ $("#closeNoteEdit").onclick=async()=>{
   }else{
     await saveCurrentNote();
   }
-  if(currentNote&&!currentNote._new){$("#noteDialog").close();renderInlineNote();renderNoteList();}
-  else $("#noteDialog").close();
-};
+  $("#noteDialog").close();
+  if(currentNote&&!currentNote._new){renderInlineNote();renderNoteList();}
+}
+$("#closeNoteEdit").onclick=finishNoteEdit;
+$("#confirmNoteEdit").onclick=finishNoteEdit;
 $("#viewPinNote").onclick=async()=>{
   if(!currentNote||currentNote._new)return;
   const v=!currentNote.is_pinned;
