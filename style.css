@@ -109,3 +109,10 @@ body{font-size:12px}
 }
 
 .idea-category.talk{background:#eee9f8;color:#746596}
+
+/* v10 — checklist completion */
+.check-line{display:flex;align-items:flex-start;gap:8px;margin:5px 0}
+.check-box{width:16px;height:16px;min-width:16px;border:1.5px solid #aeb5bd;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;line-height:1;font-size:11px;font-weight:800;margin-top:2px;background:#fff;user-select:none}
+.check-line.checked .check-box{background:#30343a;border-color:#30343a;color:#fff}
+.check-line.checked .check-text{text-decoration:line-through;text-decoration-thickness:1.5px;color:#a2a7ae}
+.inline-note-content .check-box{pointer-events:auto}

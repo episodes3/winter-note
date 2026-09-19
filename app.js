@@ -339,6 +339,23 @@ async function deleteCurrentNote(){
   },4000);
   setTimeout(async()=>{if(!wasUndone)await sb.from("notes").delete().eq("id",id)},4000);
 }
+
+$("#inlineContent").addEventListener("click",async e=>{
+  const box=e.target.closest(".check-box");if(!box||!currentNote)return;
+  e.preventDefault();
+  const line=box.closest(".check-line"),checked=!line.classList.contains("checked");
+  line.classList.toggle("checked",checked);line.dataset.checked=String(checked);box.textContent=checked?"✓":"";
+  const h=document.createElement("div");h.innerHTML=currentNote.content||"";
+  const shown=[...$("#inlineContent").querySelectorAll(".check-line")],stored=[...h.querySelectorAll(".check-line")],idx=shown.indexOf(line);
+  if(idx<0||!stored[idx])return;
+  stored[idx].classList.toggle("checked",checked);stored[idx].dataset.checked=String(checked);
+  const b=stored[idx].querySelector(".check-box");if(b)b.textContent=checked?"✓":"";
+  const old=currentNote.content||"",next=h.innerHTML;
+  await sb.from("note_versions").insert({user_id:user.id,note_id:currentNote.id,title:currentNote.title||"",content:old});
+  const {data,error}=await sb.from("notes").update({content:next}).eq("id",currentNote.id).select().single();
+  if(!error&&data){Object.assign(currentNote,data);renderNoteList();renderRecent();}
+});
+
 $("#inlineEditNote").onclick=()=>{if(!currentNote)return;$("#noteDialog").showModal();openNoteEditor(false)};
 $("#inlineDeleteNote").onclick=deleteCurrentNote;
 $("#inlineCloseNote").onclick=()=>{$("#inlineNoteView").classList.add("hidden");currentNote=null;renderNoteList()};
