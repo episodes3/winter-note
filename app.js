@@ -1,10 +1,11 @@
-let sb=null,user=null,currentPage="home",currentChannel="",notes=[],schedules=[],ideas=[],currentNote=null,weekOffset=0,saveTimer=null,ideaStatus="active",ideaCategory="전체";
+let sb=null,user=null,currentPage="home",currentChannel="",notes=[],schedules=[],ideas=[],todos=[],currentNote=null,weekOffset=0,saveTimer=null,ideaStatus="active",ideaCategory="전체";
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const channelMap={hyeyoung:"혜영이는 못말려",woojae:"오늘의 주우재",dowoon:"윤도운도윤"};
 const channelEmoji={"혜영이는 못말려":"👗","오늘의 주우재":"🦴","윤도운도윤":"🐶","기타":"•"};
 const esc=s=>(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const strip=s=>{let d=document.createElement("div");d.innerHTML=s||"";return d.textContent||""};
-function toast(t){let el=$("#toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1800)}
+function toast(t){let el=$("#toast");el.classList.remove("action-toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1800)}
+function undoToast(message,onUndo,duration=4000){let el=$("#toast");el.innerHTML=`<span>${esc(message)}</span><button type="button">되돌리기</button>`;el.classList.add("show","action-toast");let undone=false;let timer=setTimeout(()=>{el.classList.remove("show","action-toast");el.textContent=""},duration);el.querySelector("button").onclick=()=>{if(undone)return;undone=true;clearTimeout(timer);el.classList.remove("show","action-toast");el.textContent="";onUndo()};return()=>undone}
 function localDate(d=new Date()){let x=new Date(d.getTime()-d.getTimezoneOffset()*60000);return x.toISOString().slice(0,10)}
 function fmtDate(v){if(!v)return"";let d=new Date(v);return `${d.getMonth()+1}.${d.getDate()}`}
 function initClient(){
@@ -37,7 +38,11 @@ function showApp(){
   $("#app").classList.remove("hidden");$("#userEmail").textContent=user.email||"";
   const d=new Date();$("#todayText").textContent=new Intl.DateTimeFormat("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"short"}).format(d);
 }
-async function loadAll(){await Promise.all([loadNotes(),loadSchedules(),loadIdeas()]);renderHome()}
+async function loadAll(){await Promise.all([loadNotes(),loadSchedules(),loadIdeas(),loadTodos()]);renderHome()}
+async function loadTodos(){
+  const {data,error}=await sb.from("todos").select("*").eq("todo_date",localDate()).order("created_at",{ascending:true});
+  if(!error)todos=data||[];
+}
 async function loadIdeas(){
   const {data,error}=await sb.from("ideas").select("*").order("updated_at",{ascending:false});
   if(!error)ideas=data||[];
@@ -97,15 +102,12 @@ $("#saveSchedule").onclick=async()=>{
   if(error)return toast("저장에 실패했어요.");$("#scheduleDialog").close();await loadSchedules();renderWeek();toast("일정을 저장했어요.");
 };
 $("#deleteSchedule").onclick=async()=>{let id=$("#scheduleId").value;if(!id||!confirm("이 일정을 삭제할까요?"))return;await sb.from("schedules").delete().eq("id",id);$("#scheduleDialog").close();await loadSchedules();renderWeek()};
-function todoKey(){return `wn_todos_${user?.id||"x"}_${localDate()}`}
-function getTodos(){try{return JSON.parse(localStorage.getItem(todoKey())||"[]")}catch{return[]}}
-function saveTodos(a){localStorage.setItem(todoKey(),JSON.stringify(a));renderTodos()}
 function renderTodos(){
-  let a=getTodos();$("#todoList").innerHTML=a.length?a.map((x,i)=>`<div class="todo-item ${x.done?"done":""}"><input type="checkbox" data-i="${i}" ${x.done?"checked":""}><span>${esc(x.text)}</span><button data-del="${i}">×</button></div>`).join(""):`<div style="font-size:11px;color:#aaa;padding:10px 0">오늘 할 일을 추가해 보세요.</div>`;
-  $$("#todoList input").forEach(x=>x.onchange=()=>{let a=getTodos();a[+x.dataset.i].done=x.checked;saveTodos(a)});
-  $$("#todoList button").forEach(x=>x.onclick=()=>{let a=getTodos();a.splice(+x.dataset.del,1);saveTodos(a)});
+  let a=todos;$("#todoList").innerHTML=a.length?a.map(x=>`<div class="todo-item ${x.done?"done":""}"><input type="checkbox" data-id="${x.id}" ${x.done?"checked":""}><span>${esc(x.text)}</span><button data-del="${x.id}">×</button></div>`).join(""):`<div style="font-size:11px;color:#aaa;padding:10px 0">오늘 할 일을 추가해 보세요.</div>`;
+  $$("#todoList input").forEach(x=>x.onchange=async()=>{await sb.from("todos").update({done:x.checked}).eq("id",+x.dataset.id);let t=todos.find(t=>t.id===+x.dataset.id);if(t)t.done=x.checked;renderTodos()});
+  $$("#todoList button").forEach(x=>x.onclick=async()=>{let id=+x.dataset.del;await sb.from("todos").delete().eq("id",id);todos=todos.filter(t=>t.id!==id);renderTodos()});
 }
-function addTodo(){let v=$("#todoInput").value.trim();if(!v)return;let a=getTodos();a.push({text:v,done:false});$("#todoInput").value="";saveTodos(a)}
+async function addTodo(){let v=$("#todoInput").value.trim();if(!v)return;let {data,error}=await sb.from("todos").insert({user_id:user.id,text:v,done:false,todo_date:localDate()}).select().single();if(error)return toast("할 일 저장에 실패했어요.");todos.push(data);$("#todoInput").value="";renderTodos()}
 $("#todoAdd").onclick=addTodo;$("#todoInput").onkeydown=e=>{if(e.key==="Enter")addTodo()};
 function renderRecent(){
   let a=[...notes].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,6);
@@ -136,7 +138,10 @@ $("#newNote").onclick=async()=>{
 };
 function scheduleSave(){if(!currentNote)return;$("#saveState").textContent="저장 중…";clearTimeout(saveTimer);saveTimer=setTimeout(saveCurrentNote,600)}
 async function saveCurrentNote(){
-  if(!currentNote)return;let payload={title:$("#noteTitle").value,content:$("#noteContent").innerHTML};
+  if(!currentNote)return;
+  let payload={title:$("#noteTitle").value,content:$("#noteContent").innerHTML};
+  if(payload.title===currentNote.title&&payload.content===currentNote.content){$("#saveState").textContent="자동 저장됨";return}
+  await sb.from("note_versions").insert({user_id:user.id,note_id:currentNote.id,title:currentNote.title||"",content:currentNote.content||""});
   const {data,error}=await sb.from("notes").update(payload).eq("id",currentNote.id).select().single();
   if(error){$("#saveState").textContent="저장 실패";return}
   Object.assign(currentNote,data);$("#saveState").textContent="자동 저장됨";updateUpdated();renderNoteList();renderRecent();
@@ -144,7 +149,7 @@ async function saveCurrentNote(){
 $("#noteTitle").oninput=scheduleSave;$("#noteContent").oninput=scheduleSave;
 function updateUpdated(){if(currentNote)$("#updatedText").textContent=`마지막 수정 ${new Date(currentNote.updated_at).toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}`}
 $("#pinNote").onclick=async()=>{if(!currentNote)return;let v=!currentNote.is_pinned;const {data}=await sb.from("notes").update({is_pinned:v}).eq("id",currentNote.id).select().single();if(data){Object.assign(currentNote,data);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));openNote(currentNote.id)}};
-$("#deleteNote").onclick=async()=>{if(!currentNote||!confirm("이 메모를 삭제할까요?"))return;let id=currentNote.id;await sb.from("notes").delete().eq("id",id);notes=notes.filter(n=>n.id!==id);currentNote=null;showEmptyEditor();renderNoteList();renderRecent()};
+$("#deleteNote").onclick=()=>{if(!currentNote||!confirm("이 메모를 삭제할까요?"))return;let doomed={...currentNote},id=doomed.id;notes=notes.filter(n=>n.id!==id);currentNote=null;showEmptyEditor();renderNoteList();renderRecent();let wasUndone=false;undoToast("메모를 삭제했어요.",()=>{wasUndone=true;notes.unshift(doomed);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));renderNoteList();renderRecent();openNote(id)},4000);setTimeout(async()=>{if(!wasUndone)await sb.from("notes").delete().eq("id",id)},4000)};
 $$(".toolbar [data-cmd]").forEach(b=>b.onclick=()=>{document.execCommand(b.dataset.cmd,false,null);$("#noteContent").focus();scheduleSave()});
 $("#fontSize").onchange=e=>{document.execCommand("fontSize",false,e.target.value);$("#noteContent").focus();scheduleSave()};
 
@@ -170,8 +175,35 @@ $("#noteContent").addEventListener("keydown", e=>{
   }
 });
 
-$("#linkBtn").onclick=()=>{let u=prompt("링크 주소를 입력해 주세요.");if(u){document.execCommand("createLink",false,u);scheduleSave()}};
-$("#checkBtn").onclick=()=>{document.execCommand("insertHTML",false,'<div>☐&nbsp; </div>');$("#noteContent").focus();scheduleSave()};
+$("#linkBtn").onclick=()=>{insertLinkCard()};
+$("#checkBtn").onclick=()=>{document.execCommand("insertHTML",false,'<div class="check-line" data-checked="false"><span class="check-box" contenteditable="false"></span><span class="check-text">체크 항목</span></div><div><br></div>');$("#noteContent").focus();scheduleSave()};
+$("#noteContent").addEventListener("click",e=>{let box=e.target.closest(".check-box");if(!box)return;let line=box.closest(".check-line");let checked=!line.classList.contains("checked");line.classList.toggle("checked",checked);line.dataset.checked=String(checked);box.textContent=checked?"✓":"";scheduleSave()});
+function insertLinkCard(){
+  let raw=prompt("링크 주소를 입력해 주세요.");if(!raw)return;let u;try{u=new URL(raw.match(/^https?:\/\//)?raw:"https://"+raw)}catch{return toast("올바른 링크 주소를 입력해 주세요.")}
+  if(!["http:","https:"].includes(u.protocol))return toast("http/https 링크만 사용할 수 있어요.");
+  let selected=window.getSelection()?.toString().trim(),label=selected||u.hostname.replace(/^www\./,"");
+  let href=esc(u.href),title=esc(label),host=esc(u.hostname.replace(/^www\./,""));
+  document.execCommand("insertHTML",false,`<a class="link-card" href="${href}" target="_blank" rel="noopener noreferrer" contenteditable="false"><strong>🔗 ${title}</strong><small>${host} · ${href}</small></a><div><br></div>`);$("#noteContent").focus();scheduleSave();
+}
+
+// Previous versions
+$("#versionsBtn").onclick=async()=>{
+  if(!currentNote)return;const {data,error}=await sb.from("note_versions").select("*").eq("note_id",currentNote.id).order("created_at",{ascending:false}).limit(30);
+  if(error)return toast("이전 버전을 불러오지 못했어요.");
+  $("#versionList").innerHTML=(data||[]).length?(data||[]).map(v=>`<div class="version-row"><div><div class="meta">${new Date(v.created_at).toLocaleString("ko-KR")}</div><h3>${esc(v.title||"제목 없음")}</h3><p>${esc(strip(v.content)||"내용 없음")}</p></div><button data-version="${v.id}">복원</button></div>`).join(""):`<div class="idea-empty">저장된 이전 버전이 아직 없어요.</div>`;
+  $$("[data-version]").forEach(b=>b.onclick=()=>restoreVersion((data||[]).find(v=>String(v.id)===b.dataset.version)));$("#versionsDialog").showModal();
+};
+$("#closeVersions").onclick=()=>$("#versionsDialog").close();
+async function restoreVersion(v){if(!v||!currentNote)return;await sb.from("note_versions").insert({user_id:user.id,note_id:currentNote.id,title:currentNote.title||"",content:currentNote.content||""});const {data,error}=await sb.from("notes").update({title:v.title,content:v.content}).eq("id",currentNote.id).select().single();if(error)return toast("복원에 실패했어요.");Object.assign(currentNote,data);openNote(currentNote.id);$("#versionsDialog").close();toast("이전 버전으로 복원했어요.")}
+
+// Global search: notes + ideas + schedules
+let searchTimer=null;
+$("#globalSearch").addEventListener("input",e=>{clearTimeout(searchTimer);let q=e.target.value.trim();if(!q)return;searchTimer=setTimeout(()=>showGlobalSearch(q),180)});
+$("#globalSearch").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.value.trim())showGlobalSearch(e.target.value.trim())});
+$("#closeSearch").onclick=()=>$("#searchDialog").close();
+function showGlobalSearch(q){let l=q.toLowerCase(),results=[];notes.forEach(n=>{if(((n.title||"")+" "+strip(n.content)).toLowerCase().includes(l))results.push({type:"메모",title:n.title||"제목 없음",sub:`${channelEmoji[n.channel]||"•"} ${n.channel} · ${strip(n.content)}`,kind:"note",id:n.id,channel:n.channel})});ideas.forEach(i=>{if(((i.title||"")+" "+(i.content||"")+" "+(i.category||"")).toLowerCase().includes(l))results.push({type:"아이디어",title:i.title||"제목 없음",sub:`${i.category} · ${i.content||""}`,kind:"idea",id:i.id})});schedules.forEach(x=>{if(((x.title||"")+" "+(x.memo||"")+" "+(x.channel||"")).toLowerCase().includes(l))results.push({type:"일정",title:x.title,sub:`${x.schedule_date} · ${x.channel}${x.memo?" · "+x.memo:""}`,kind:"schedule",id:x.id})});$("#searchQueryLabel").textContent=`“${q}” 검색 결과 ${results.length}개`;$("#globalResults").innerHTML=results.length?results.slice(0,80).map((r,i)=>`<button class="search-result" data-result="${i}"><span class="type">${r.type}</span><h3>${esc(r.title)}</h3><p>${esc(r.sub)}</p></button>`).join(""):`<div class="idea-empty">검색 결과가 없어요.</div>`;$$('[data-result]').forEach(b=>b.onclick=()=>openSearchResult(results[+b.dataset.result]));$("#searchDialog").showModal()}
+function openSearchResult(r){$("#searchDialog").close();$("#globalSearch").value="";if(r.kind==="note"){let p=Object.keys(channelMap).find(k=>channelMap[k]===r.channel);if(p){switchPage(p);openNote(r.id)}}else if(r.kind==="idea"){switchPage("ideas");openIdea(ideas.find(x=>x.id===r.id))}else{switchPage("home");openSchedule(schedules.find(x=>x.id===r.id))}}
+
 boot();
 
 // ---------------- IDEA ARCHIVE ----------------

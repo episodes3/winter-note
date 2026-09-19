@@ -62,7 +62,7 @@
           <div id="eyebrow" class="eyebrow">PERSONAL DASHBOARD</div>
           <h1 id="pageTitle">홈</h1>
         </div>
-        <div id="todayText" class="today"></div>
+        <div class="topbar-tools"><div class="global-search-wrap"><span>⌕</span><input id="globalSearch" placeholder="전체 검색"></div><div id="todayText" class="today"></div></div>
       </header>
 
       <section id="homePage" class="page">
@@ -121,6 +121,7 @@
                 <input id="noteTitle" class="title-input" placeholder="제목 없음" />
                 <div class="editor-actions">
                   <button id="pinNote" class="soft-btn">📌 고정</button>
+                  <button id="versionsBtn" class="soft-btn">↩ 이전 버전</button>
                   <button id="deleteNote" class="danger-btn">삭제</button>
                 </div>
               </div>
@@ -204,6 +205,22 @@
     </form>
   </dialog>
 
+
+  <dialog id="searchDialog" class="search-dialog">
+    <div class="dialog-pad">
+      <div class="modal-head"><div><span class="kicker">SEARCH ALL</span><h2>전체 검색</h2></div><button id="closeSearch" class="xbtn">×</button></div>
+      <div id="searchQueryLabel" class="search-query-label"></div>
+      <div id="globalResults" class="global-results"></div>
+    </div>
+  </dialog>
+
+  <dialog id="versionsDialog" class="versions-dialog">
+    <div class="dialog-pad">
+      <div class="modal-head"><div><span class="kicker">HISTORY</span><h2>이전 버전</h2></div><button id="closeVersions" class="xbtn">×</button></div>
+      <p class="version-help">자동 저장 전의 내용을 불러올 수 있어요.</p>
+      <div id="versionList" class="version-list"></div>
+    </div>
+  </dialog>
 
   <dialog id="ideaDialog">
     <form method="dialog" id="ideaForm">
