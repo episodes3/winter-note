@@ -147,8 +147,29 @@ $("#pinNote").onclick=async()=>{if(!currentNote)return;let v=!currentNote.is_pin
 $("#deleteNote").onclick=async()=>{if(!currentNote||!confirm("이 메모를 삭제할까요?"))return;let id=currentNote.id;await sb.from("notes").delete().eq("id",id);notes=notes.filter(n=>n.id!==id);currentNote=null;showEmptyEditor();renderNoteList();renderRecent()};
 $$(".toolbar [data-cmd]").forEach(b=>b.onclick=()=>{document.execCommand(b.dataset.cmd,false,null);$("#noteContent").focus();scheduleSave()});
 $("#fontSize").onchange=e=>{document.execCommand("fontSize",false,e.target.value);$("#noteContent").focus();scheduleSave()};
-$("#foreColor").oninput=e=>{document.execCommand("foreColor",false,e.target.value);$("#noteContent").focus();scheduleSave()};
-$("#hiliteColor").oninput=e=>{document.execCommand("hiliteColor",false,e.target.value);$("#noteContent").focus();scheduleSave()};
+
+// Editor keyboard shortcuts: Cmd/Ctrl+B = bold, Cmd/Ctrl +/- = font size
+$("#noteContent").addEventListener("keydown", e=>{
+  if(!(e.metaKey||e.ctrlKey)) return;
+  const key=e.key.toLowerCase();
+  if(key==="b"){
+    e.preventDefault();
+    document.execCommand("bold",false,null);
+    scheduleSave();
+    return;
+  }
+  if(key==="+"||key==="="||key==="-"||key==="_"){
+    e.preventDefault();
+    const select=$("#fontSize");
+    let size=parseInt(select.value||"3",10);
+    size += (key==="+"||key==="=") ? 1 : -1;
+    size=Math.max(2,Math.min(5,size));
+    select.value=String(size);
+    document.execCommand("fontSize",false,String(size));
+    scheduleSave();
+  }
+});
+
 $("#linkBtn").onclick=()=>{let u=prompt("링크 주소를 입력해 주세요.");if(u){document.execCommand("createLink",false,u);scheduleSave()}};
 $("#checkBtn").onclick=()=>{document.execCommand("insertHTML",false,'<div>☐&nbsp; </div>');$("#noteContent").focus();scheduleSave()};
 boot();
