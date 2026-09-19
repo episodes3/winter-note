@@ -102,46 +102,12 @@
       </section>
 
       <section id="notesPage" class="page hidden">
-        <div class="notes-shell">
-          <aside class="note-list-panel">
-            <div class="note-list-top">
-              <button id="newNote" class="primary wide">+ 새 메모</button>
-              <input id="noteSearch" class="search" placeholder="메모 검색" />
-            </div>
-            <div id="noteList" class="note-list"></div>
-          </aside>
-
-          <article class="editor-panel">
-            <div id="emptyEditor" class="empty-editor">
-              <div class="empty-icon">✎</div>
-              <h2>메모를 선택하거나 새로 작성해 주세요</h2>
-            </div>
-            <div id="editorWrap" class="hidden">
-              <div class="editor-meta">
-                <input id="noteTitle" class="title-input" placeholder="제목 없음" />
-                <div class="editor-actions">
-                  <button id="pinNote" class="soft-btn">📌 고정</button>
-                  <button id="versionsBtn" class="soft-btn">↩ 이전 버전</button>
-                  <button id="deleteNote" class="danger-btn">삭제</button>
-                </div>
-              </div>
-              <div class="toolbar">
-                <select id="fontSize">
-                  <option value="2">작게</option>
-                  <option value="3" selected>보통</option>
-                  <option value="4">크게</option>
-                  <option value="5">아주 크게</option>
-                </select>
-                <button data-cmd="bold"><b>B</b></button>
-                <button data-cmd="underline"><u>U</u></button>
-                <button data-cmd="insertUnorderedList">• 목록</button>
-                <button id="checkBtn">☑ 체크</button>
-                <button id="linkBtn">🔗 링크</button>
-              </div>
-              <div id="noteContent" class="editor" contenteditable="true" data-placeholder="메모를 입력하세요..."></div>
-              <div class="save-row"><span id="saveState">자동 저장</span><span id="updatedText"></span></div>
-            </div>
-          </article>
+        <div class="notes-board card">
+          <div class="notes-board-top">
+            <input id="noteSearch" class="search" placeholder="메모 제목 검색" />
+            <button id="newNote" class="primary">+ 새 메모</button>
+          </div>
+          <div id="noteList" class="note-list board-list"></div>
         </div>
       </section>
 
@@ -219,6 +185,52 @@
       <div class="modal-head"><div><span class="kicker">HISTORY</span><h2>이전 버전</h2></div><button id="closeVersions" class="xbtn">×</button></div>
       <p class="version-help">자동 저장 전의 내용을 불러올 수 있어요.</p>
       <div id="versionList" class="version-list"></div>
+    </div>
+  </dialog>
+
+
+  <dialog id="noteDialog" class="note-dialog">
+    <div id="noteView" class="note-view">
+      <div class="modal-head note-modal-head">
+        <div>
+          <span id="viewPinned" class="view-pin"></span>
+          <h2 id="viewTitle"></h2>
+          <div id="viewMeta" class="view-meta"></div>
+        </div>
+        <button type="button" id="closeNoteView" class="xbtn">×</button>
+      </div>
+      <div id="viewContent" class="note-view-content"></div>
+      <div class="note-view-actions">
+        <button id="viewPinNote" class="soft-btn">📌 고정</button>
+        <button id="editNote" class="primary">수정</button>
+      </div>
+    </div>
+
+    <div id="editorWrap" class="hidden">
+      <div class="editor-meta">
+        <input id="noteTitle" class="title-input" placeholder="제목 없음" />
+        <div class="editor-actions">
+          <button id="pinNote" class="soft-btn">📌 고정</button>
+          <button id="versionsBtn" class="soft-btn">↩ 이전 버전</button>
+          <button id="deleteNote" class="danger-btn">삭제</button>
+          <button type="button" id="closeNoteEdit" class="xbtn">×</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <select id="fontSize">
+          <option value="2">작게</option>
+          <option value="3" selected>보통</option>
+          <option value="4">크게</option>
+          <option value="5">아주 크게</option>
+        </select>
+        <button data-cmd="bold"><b>B</b></button>
+        <button data-cmd="underline"><u>U</u></button>
+        <button data-cmd="insertUnorderedList">• 목록</button>
+        <button id="checkBtn">☑ 체크</button>
+        <button id="linkBtn">🔗 링크</button>
+      </div>
+      <div id="noteContent" class="editor" contenteditable="true" data-placeholder="메모를 입력하세요..."></div>
+      <div class="save-row"><span id="saveState">자동 저장</span><span id="updatedText"></span></div>
     </div>
   </dialog>
 

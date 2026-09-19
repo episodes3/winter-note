@@ -121,25 +121,53 @@ function filteredNotes(){
   return notes.filter(n=>n.channel===currentChannel&&(!q||(n.title||"").toLowerCase().includes(q)||strip(n.content).toLowerCase().includes(q)));
 }
 function renderNoteList(){
-  let a=filteredNotes();$("#noteList").innerHTML=a.length?a.map(n=>`<div class="note-row ${currentNote?.id===n.id?"active":""}" data-id="${n.id}">
-    <h3>${n.is_pinned?"📌 ":""}${esc(n.title||"제목 없음")}</h3><p>${esc(strip(n.content)||"내용 없음")}</p><div class="meta">${fmtDate(n.updated_at)} 수정</div>
-  </div>`).join(""):`<div style="padding:22px;color:#aaa;font-size:11px">메모가 없습니다.</div>`;
+  let a=filteredNotes();$("#noteList").innerHTML=a.length?a.map(n=>`<div class="note-row" data-id="${n.id}">
+    <h3>${n.is_pinned?"📌 ":""}${esc(n.title||"제목 없음")}</h3><div class="meta">${fmtDate(n.updated_at)} 수정</div>
+  </div>`).join(""):`<div style="padding:22px;color:#aaa;font-size:10px">메모가 없습니다.</div>`;
   $$(".note-row").forEach(x=>x.onclick=()=>openNote(+x.dataset.id));
 }
 $("#noteSearch").oninput=renderNoteList;
-function showEmptyEditor(){$("#emptyEditor").classList.remove("hidden");$("#editorWrap").classList.add("hidden")}
-function openNote(id){
-  currentNote=notes.find(n=>n.id===id);if(!currentNote)return;$("#emptyEditor").classList.add("hidden");$("#editorWrap").classList.remove("hidden");
-  $("#noteTitle").value=currentNote.title||"";$("#noteContent").innerHTML=currentNote.content||"";$("#pinNote").textContent=currentNote.is_pinned?"📌 고정됨":"📌 고정";updateUpdated();renderNoteList();
+function showEmptyEditor(){
+  $("#noteView")?.classList.remove("hidden");
+  $("#editorWrap")?.classList.add("hidden");
 }
-$("#newNote").onclick=async()=>{
-  const {data,error}=await sb.from("notes").insert({user_id:user.id,channel:currentChannel,title:"새 메모",content:""}).select().single();
-  if(error)return toast("메모 생성에 실패했어요.");notes.unshift(data);renderNoteList();openNote(data.id);$("#noteTitle").select();
+function renderNoteView(){
+  if(!currentNote)return;
+  $("#viewTitle").textContent=currentNote.title||"제목 없음";
+  $("#viewContent").innerHTML=currentNote.content||'<span style="color:#aaa">내용 없음</span>';
+  $("#viewMeta").textContent=`${fmtDate(currentNote.updated_at)} 수정`;
+  $("#viewPinned").textContent=currentNote.is_pinned?"📌 고정 메모":"";
+  $("#viewPinNote").textContent=currentNote.is_pinned?"📌 고정됨":"📌 고정";
+}
+function openNote(id){
+  currentNote=notes.find(n=>n.id===id);if(!currentNote)return;
+  showEmptyEditor();renderNoteView();$("#noteDialog").showModal();renderNoteList();
+}
+function openNoteEditor(isNew=false){
+  $("#noteView").classList.add("hidden");$("#editorWrap").classList.remove("hidden");
+  $("#noteTitle").value=currentNote?.title||"";
+  $("#noteContent").innerHTML=currentNote?.content||"";
+  $("#pinNote").textContent=currentNote?.is_pinned?"📌 고정됨":"📌 고정";
+  $("#deleteNote").classList.toggle("hidden",isNew);
+  $("#versionsBtn").classList.toggle("hidden",isNew);
+  $("#saveState").textContent=isNew?"새 메모":"자동 저장";
+  updateUpdated();
+  setTimeout(()=>$("#noteTitle").focus(),0);
+}
+$("#newNote").onclick=()=>{
+  currentNote={id:null,user_id:user.id,channel:currentChannel,title:"",content:"",is_pinned:false,updated_at:new Date().toISOString(),_new:true};
+  $("#noteDialog").showModal();openNoteEditor(true);
 };
 function scheduleSave(){if(!currentNote)return;$("#saveState").textContent="저장 중…";clearTimeout(saveTimer);saveTimer=setTimeout(saveCurrentNote,600)}
 async function saveCurrentNote(){
   if(!currentNote)return;
-  let payload={title:$("#noteTitle").value,content:$("#noteContent").innerHTML};
+  let payload={title:$("#noteTitle").value.trim()||"제목 없음",content:$("#noteContent").innerHTML};
+  if(currentNote._new){
+    const {data,error}=await sb.from("notes").insert({user_id:user.id,channel:currentChannel,title:payload.title,content:payload.content,is_pinned:!!currentNote.is_pinned}).select().single();
+    if(error){$("#saveState").textContent="저장 실패";return}
+    currentNote={...data};notes.unshift(data);$("#deleteNote").classList.remove("hidden");$("#versionsBtn").classList.remove("hidden");
+    $("#saveState").textContent="자동 저장됨";updateUpdated();renderNoteList();renderRecent();return;
+  }
   if(payload.title===currentNote.title&&payload.content===currentNote.content){$("#saveState").textContent="자동 저장됨";return}
   await sb.from("note_versions").insert({user_id:user.id,note_id:currentNote.id,title:currentNote.title||"",content:currentNote.content||""});
   const {data,error}=await sb.from("notes").update(payload).eq("id",currentNote.id).select().single();
@@ -148,8 +176,8 @@ async function saveCurrentNote(){
 }
 $("#noteTitle").oninput=scheduleSave;$("#noteContent").oninput=scheduleSave;
 function updateUpdated(){if(currentNote)$("#updatedText").textContent=`마지막 수정 ${new Date(currentNote.updated_at).toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}`}
-$("#pinNote").onclick=async()=>{if(!currentNote)return;let v=!currentNote.is_pinned;const {data}=await sb.from("notes").update({is_pinned:v}).eq("id",currentNote.id).select().single();if(data){Object.assign(currentNote,data);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));openNote(currentNote.id)}};
-$("#deleteNote").onclick=()=>{if(!currentNote||!confirm("이 메모를 삭제할까요?"))return;let doomed={...currentNote},id=doomed.id;notes=notes.filter(n=>n.id!==id);currentNote=null;showEmptyEditor();renderNoteList();renderRecent();let wasUndone=false;undoToast("메모를 삭제했어요.",()=>{wasUndone=true;notes.unshift(doomed);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));renderNoteList();renderRecent();openNote(id)},4000);setTimeout(async()=>{if(!wasUndone)await sb.from("notes").delete().eq("id",id)},4000)};
+$("#pinNote").onclick=async()=>{if(!currentNote)return;let v=!currentNote.is_pinned;if(currentNote._new){currentNote.is_pinned=v;$("#pinNote").textContent=v?"📌 고정됨":"📌 고정";return}const {data}=await sb.from("notes").update({is_pinned:v}).eq("id",currentNote.id).select().single();if(data){Object.assign(currentNote,data);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));$("#pinNote").textContent=v?"📌 고정됨":"📌 고정";renderNoteList()}};
+$("#deleteNote").onclick=()=>{if(!currentNote||currentNote._new)return;if(!confirm("이 메모를 삭제할까요?"))return;let doomed={...currentNote},id=doomed.id;notes=notes.filter(n=>n.id!==id);currentNote=null;$("#noteDialog").close();renderNoteList();renderRecent();let wasUndone=false;undoToast("메모를 삭제했어요.",()=>{wasUndone=true;notes.unshift(doomed);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));renderNoteList();renderRecent()},4000);setTimeout(async()=>{if(!wasUndone)await sb.from("notes").delete().eq("id",id)},4000)};
 $$(".toolbar [data-cmd]").forEach(b=>b.onclick=()=>{document.execCommand(b.dataset.cmd,false,null);$("#noteContent").focus();scheduleSave()});
 $("#fontSize").onchange=e=>{document.execCommand("fontSize",false,e.target.value);$("#noteContent").focus();scheduleSave()};
 
@@ -280,6 +308,28 @@ $("#globalSearch").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.v
 $("#closeSearch").onclick=()=>$("#searchDialog").close();
 function showGlobalSearch(q){let l=q.toLowerCase(),results=[];notes.forEach(n=>{if(((n.title||"")+" "+strip(n.content)).toLowerCase().includes(l))results.push({type:"메모",title:n.title||"제목 없음",sub:`${channelEmoji[n.channel]||"•"} ${n.channel} · ${strip(n.content)}`,kind:"note",id:n.id,channel:n.channel})});ideas.forEach(i=>{if(((i.title||"")+" "+(i.content||"")+" "+(i.category||"")).toLowerCase().includes(l))results.push({type:"아이디어",title:i.title||"제목 없음",sub:`${i.category} · ${i.content||""}`,kind:"idea",id:i.id})});schedules.forEach(x=>{if(((x.title||"")+" "+(x.memo||"")+" "+(x.channel||"")).toLowerCase().includes(l))results.push({type:"일정",title:x.title,sub:`${x.schedule_date} · ${x.channel}${x.memo?" · "+x.memo:""}`,kind:"schedule",id:x.id})});$("#searchQueryLabel").textContent=`“${q}” 검색 결과 ${results.length}개`;$("#globalResults").innerHTML=results.length?results.slice(0,80).map((r,i)=>`<button class="search-result" data-result="${i}"><span class="type">${r.type}</span><h3>${esc(r.title)}</h3><p>${esc(r.sub)}</p></button>`).join(""):`<div class="idea-empty">검색 결과가 없어요.</div>`;$$('[data-result]').forEach(b=>b.onclick=()=>openSearchResult(results[+b.dataset.result]));$("#searchDialog").showModal()}
 function openSearchResult(r){$("#searchDialog").close();$("#globalSearch").value="";if(r.kind==="note"){let p=Object.keys(channelMap).find(k=>channelMap[k]===r.channel);if(p){switchPage(p);openNote(r.id)}}else if(r.kind==="idea"){switchPage("ideas");openIdea(ideas.find(x=>x.id===r.id))}else{switchPage("home");openSchedule(schedules.find(x=>x.id===r.id))}}
+
+
+$("#closeNoteView").onclick=()=>$("#noteDialog").close();
+$("#editNote").onclick=()=>openNoteEditor(false);
+$("#closeNoteEdit").onclick=async()=>{
+  clearTimeout(saveTimer);
+  if(currentNote?._new){
+    const hasText=$("#noteTitle").value.trim()||strip($("#noteContent").innerHTML).trim();
+    if(hasText)await saveCurrentNote();
+  }else{
+    await saveCurrentNote();
+  }
+  if(currentNote&&!currentNote._new){renderNoteView();showEmptyEditor();}
+  else $("#noteDialog").close();
+};
+$("#viewPinNote").onclick=async()=>{
+  if(!currentNote||currentNote._new)return;
+  const v=!currentNote.is_pinned;
+  const {data}=await sb.from("notes").update({is_pinned:v}).eq("id",currentNote.id).select().single();
+  if(data){Object.assign(currentNote,data);notes.sort((a,b)=>(b.is_pinned-a.is_pinned)||new Date(b.updated_at)-new Date(a.updated_at));renderNoteView();renderNoteList();}
+};
+$("#noteDialog").addEventListener("click",e=>{if(e.target===$("#noteDialog"))$("#noteDialog").close()});
 
 boot();
 
