@@ -375,7 +375,7 @@ $("#noteDialog").addEventListener("click",e=>{if(e.target===$("#noteDialog"))$("
 boot();
 
 // ---------------- IDEA ARCHIVE ----------------
-function ideaClass(c){return c==="패션"?"fashion":c==="뷰티"?"beauty":c==="브이로그"?"vlog":c==="예능"?"ent":"etc"}
+function ideaClass(c){return c==="패션"?"fashion":c==="뷰티"?"beauty":c==="브이로그"?"vlog":c==="예능"?"ent":c==="토크"?"talk":"etc"}
 function renderIdeas(){
   let q=$("#ideaSearch").value.trim().toLowerCase();
   let a=ideas.filter(x=>x.status===ideaStatus&&(ideaCategory==="전체"||x.category===ideaCategory)&&(!q||(x.title||"").toLowerCase().includes(q)||(x.content||"").toLowerCase().includes(q)));
