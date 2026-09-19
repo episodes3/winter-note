@@ -48,6 +48,7 @@
         <button class="nav-item" data-page="hyeyoung"><span>👗</span> 혜영이는 못말려</button>
         <button class="nav-item" data-page="woojae"><span>🦴</span> 오늘의 주우재</button>
         <button class="nav-item" data-page="dowoon"><span>🐶</span> 윤도운도윤</button>
+        <button class="nav-item" data-page="ideas"><span>💡</span> 아이디어 보관함</button>
       </nav>
       <div class="side-bottom">
         <div id="userEmail" class="user-email"></div>
@@ -144,6 +145,36 @@
           </article>
         </div>
       </section>
+
+      <section id="ideasPage" class="page hidden">
+        <div class="ideas-toolbar card">
+          <div>
+            <span class="kicker">IDEA ARCHIVE</span>
+            <h2>아이디어 보관함</h2>
+          </div>
+          <div class="idea-top-actions">
+            <input id="ideaSearch" class="search idea-search" placeholder="아이디어 검색">
+            <button id="newIdea" class="primary">+ 아이디어 추가</button>
+          </div>
+        </div>
+
+        <div class="idea-tabs">
+          <button class="idea-tab active" data-status="active">아이디어</button>
+          <button class="idea-tab" data-status="used">사용</button>
+          <button class="idea-tab" data-status="hold">보류</button>
+        </div>
+
+        <div class="idea-filter-row">
+          <button class="idea-filter active" data-category="전체">전체</button>
+          <button class="idea-filter" data-category="패션">패션</button>
+          <button class="idea-filter" data-category="뷰티">뷰티</button>
+          <button class="idea-filter" data-category="브이로그">브이로그</button>
+          <button class="idea-filter" data-category="예능">예능</button>
+          <button class="idea-filter" data-category="기타">기타</button>
+        </div>
+
+        <div id="ideaGrid" class="idea-grid"></div>
+      </section>
     </main>
   </div>
 
@@ -171,6 +202,31 @@
         <span></span>
         <button value="cancel" class="soft-btn">취소</button>
         <button type="button" id="saveSchedule" class="primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="ideaDialog">
+    <form method="dialog" id="ideaForm">
+      <div class="modal-head"><h2 id="ideaModalTitle">아이디어 추가</h2><button value="cancel" class="xbtn">×</button></div>
+      <input type="hidden" id="ideaId">
+      <label>카테고리
+        <select id="ideaCategory">
+          <option value="패션">패션</option>
+          <option value="뷰티">뷰티</option>
+          <option value="브이로그">브이로그</option>
+          <option value="예능">예능</option>
+          <option value="기타">기타</option>
+        </select>
+      </label>
+      <label>제목<input id="ideaTitle" required placeholder="아이디어 제목"></label>
+      <label>내용<textarea id="ideaContent" rows="7" placeholder="아이디어를 자유롭게 적어주세요."></textarea></label>
+      <div class="modal-actions">
+        <button type="button" id="deleteIdea" class="danger-btn hidden">삭제</button>
+        <span></span>
+        <button value="cancel" class="soft-btn">취소</button>
+        <button type="button" id="saveIdea" class="primary">저장</button>
       </div>
     </form>
   </dialog>

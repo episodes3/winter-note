@@ -1,4 +1,4 @@
-let sb=null,user=null,currentPage="home",currentChannel="",notes=[],schedules=[],currentNote=null,weekOffset=0,saveTimer=null;
+let sb=null,user=null,currentPage="home",currentChannel="",notes=[],schedules=[],ideas=[],currentNote=null,weekOffset=0,saveTimer=null,ideaStatus="active",ideaCategory="전체";
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const channelMap={hyeyoung:"혜영이는 못말려",woojae:"오늘의 주우재",dowoon:"윤도운도윤"};
 const channelEmoji={"혜영이는 못말려":"👗","오늘의 주우재":"🦴","윤도운도윤":"🐶","기타":"•"};
@@ -37,7 +37,11 @@ function showApp(){
   $("#app").classList.remove("hidden");$("#userEmail").textContent=user.email||"";
   const d=new Date();$("#todayText").textContent=new Intl.DateTimeFormat("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"short"}).format(d);
 }
-async function loadAll(){await Promise.all([loadNotes(),loadSchedules()]);renderHome()}
+async function loadAll(){await Promise.all([loadNotes(),loadSchedules(),loadIdeas()]);renderHome()}
+async function loadIdeas(){
+  const {data,error}=await sb.from("ideas").select("*").order("updated_at",{ascending:false});
+  if(!error)ideas=data||[];
+}
 async function loadNotes(){
   const {data,error}=await sb.from("notes").select("*").order("is_pinned",{ascending:false}).order("updated_at",{ascending:false});
   if(!error)notes=data||[];
@@ -49,10 +53,13 @@ async function loadSchedules(){
 $$(".nav-item").forEach(b=>b.onclick=()=>switchPage(b.dataset.page));
 function switchPage(p){
   currentPage=p;$$(".nav-item").forEach(x=>x.classList.toggle("active",x.dataset.page===p));
+  $("#homePage").classList.add("hidden");$("#notesPage").classList.add("hidden");$("#ideasPage").classList.add("hidden");
   if(p==="home"){
-    $("#homePage").classList.remove("hidden");$("#notesPage").classList.add("hidden");$("#pageTitle").textContent="홈";$("#eyebrow").textContent="PERSONAL DASHBOARD";renderHome();
+    $("#homePage").classList.remove("hidden");$("#pageTitle").textContent="홈";$("#eyebrow").textContent="PERSONAL DASHBOARD";renderHome();
+  }else if(p==="ideas"){
+    $("#ideasPage").classList.remove("hidden");$("#pageTitle").textContent="아이디어 보관함";$("#eyebrow").textContent="IDEA ARCHIVE";renderIdeas();
   }else{
-    currentChannel=channelMap[p];$("#homePage").classList.add("hidden");$("#notesPage").classList.remove("hidden");
+    currentChannel=channelMap[p];$("#notesPage").classList.remove("hidden");
     $("#pageTitle").textContent=currentChannel;$("#eyebrow").textContent="CHANNEL NOTES";currentNote=null;showEmptyEditor();renderNoteList();
   }
 }
@@ -145,3 +152,41 @@ $("#hiliteColor").oninput=e=>{document.execCommand("hiliteColor",false,e.target.
 $("#linkBtn").onclick=()=>{let u=prompt("링크 주소를 입력해 주세요.");if(u){document.execCommand("createLink",false,u);scheduleSave()}};
 $("#checkBtn").onclick=()=>{document.execCommand("insertHTML",false,'<div>☐&nbsp; </div>');$("#noteContent").focus();scheduleSave()};
 boot();
+
+// ---------------- IDEA ARCHIVE ----------------
+function ideaClass(c){return c==="패션"?"fashion":c==="뷰티"?"beauty":c==="브이로그"?"vlog":c==="예능"?"ent":"etc"}
+function renderIdeas(){
+  let q=$("#ideaSearch").value.trim().toLowerCase();
+  let a=ideas.filter(x=>x.status===ideaStatus&&(ideaCategory==="전체"||x.category===ideaCategory)&&(!q||(x.title||"").toLowerCase().includes(q)||(x.content||"").toLowerCase().includes(q)));
+  $("#ideaGrid").innerHTML=a.length?a.map(x=>`<article class="idea-card">
+    <div class="idea-card-top"><span class="idea-category ${ideaClass(x.category)}">${esc(x.category)}</span><span class="idea-date">${fmtDate(x.updated_at)}</span></div>
+    <h3>${esc(x.title||"제목 없음")}</h3><p>${esc(x.content||"내용 없음")}</p>
+    <div class="idea-card-actions">
+      <button data-edit="${x.id}">수정</button>
+      ${ideaStatus!=="active"?`<button data-move="${x.id}" data-to="active">아이디어로</button>`:""}
+      ${ideaStatus!=="used"?`<button class="used" data-move="${x.id}" data-to="used">✓ 사용</button>`:""}
+      ${ideaStatus!=="hold"?`<button class="hold" data-move="${x.id}" data-to="hold">보류</button>`:""}
+    </div>
+  </article>`).join(""):`<div class="idea-empty">여기에 저장된 아이디어가 아직 없어요.</div>`;
+  $$("[data-edit]").forEach(b=>b.onclick=()=>openIdea(ideas.find(x=>String(x.id)===b.dataset.edit)));
+  $$("[data-move]").forEach(b=>b.onclick=()=>moveIdea(+b.dataset.move,b.dataset.to));
+}
+$$(".idea-tab").forEach(b=>b.onclick=()=>{ideaStatus=b.dataset.status;$$(".idea-tab").forEach(x=>x.classList.toggle("active",x===b));renderIdeas()});
+$$(".idea-filter").forEach(b=>b.onclick=()=>{ideaCategory=b.dataset.category;$$(".idea-filter").forEach(x=>x.classList.toggle("active",x===b));renderIdeas()});
+$("#ideaSearch").oninput=renderIdeas;
+$("#newIdea").onclick=()=>openIdea();
+function openIdea(x=null){
+  $("#ideaForm").reset();$("#ideaId").value=x?.id||"";$("#ideaModalTitle").textContent=x?"아이디어 수정":"아이디어 추가";
+  $("#ideaCategory").value=x?.category||"패션";$("#ideaTitle").value=x?.title||"";$("#ideaContent").value=x?.content||"";
+  $("#deleteIdea").classList.toggle("hidden",!x);$("#ideaDialog").showModal();
+}
+$("#saveIdea").onclick=async()=>{
+  let title=$("#ideaTitle").value.trim();if(!title)return toast("제목을 입력해 주세요.");
+  let id=$("#ideaId").value,payload={user_id:user.id,category:$("#ideaCategory").value,title,content:$("#ideaContent").value,status:id?(ideas.find(x=>String(x.id)===id)?.status||"active"):"active"};
+  let {error}=id?await sb.from("ideas").update(payload).eq("id",id):await sb.from("ideas").insert(payload);
+  if(error)return toast("아이디어 저장에 실패했어요.");$("#ideaDialog").close();await loadIdeas();renderIdeas();toast("아이디어를 저장했어요.");
+};
+$("#deleteIdea").onclick=async()=>{let id=$("#ideaId").value;if(!id||!confirm("이 아이디어를 삭제할까요?"))return;await sb.from("ideas").delete().eq("id",id);$("#ideaDialog").close();await loadIdeas();renderIdeas()};
+async function moveIdea(id,status){
+  const {error}=await sb.from("ideas").update({status}).eq("id",id);if(error)return toast("이동에 실패했어요.");await loadIdeas();renderIdeas();toast(status==="used"?"사용 보관함으로 이동했어요.":status==="hold"?"보류 보관함으로 이동했어요.":"아이디어로 되돌렸어요.");
+}
